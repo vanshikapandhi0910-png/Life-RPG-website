@@ -1,7 +1,13 @@
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/realmquest';
+  const isVercel = process.env.VERCEL === '1';
+  const uri = process.env.MONGODB_URI || (isVercel ? null : 'mongodb://127.0.0.1:27017/realmquest');
+
+  if (!uri) {
+    throw new Error('MONGODB_URI is required when running on Vercel. Configure a persistent MongoDB Atlas database.');
+  }
+
   try {
     const conn = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 2000,
@@ -9,6 +15,10 @@ const connectDB = async () => {
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
     return true;
   } catch (error) {
+    if (isVercel) {
+      throw new Error(`Unable to connect to MongoDB on Vercel: ${error.message}`);
+    }
+
     console.warn(`[Database] Direct MongoDB connection failed (${error.message}). Attempting memory database initialization...`);
     try {
       const { MongoMemoryServer } = require('mongodb-memory-server');

@@ -17,6 +17,14 @@ module.exports = async (req, res) => {
     req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
   }
 
-  await ensureDatabase();
+  try {
+    await ensureDatabase();
+  } catch (error) {
+    console.error('[Database] Vercel database initialization failed:', error.message);
+    return res.status(503).json({
+      message: 'The API database is not configured. Set MONGODB_URI in the Vercel project environment variables.'
+    });
+  }
+
   return app(req, res);
 };
