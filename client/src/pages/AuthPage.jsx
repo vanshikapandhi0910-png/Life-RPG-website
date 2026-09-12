@@ -126,12 +126,8 @@ export default function AuthPage() {
       });
       playLevelUp();
     } catch (err) {
-      // If demo exists, try fallback login
-      try {
-        await login('DemoHero', 'Password123!');
-      } catch (lErr) {
-        setErrorMsg('Failed to initialize demo hero.');
-      }
+      playError();
+      setErrorMsg(err.message || 'Failed to initialize demo hero.');
     } finally {
       setLoading(false);
     }

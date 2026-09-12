@@ -12,10 +12,15 @@ async function request(endpoint, options = {}) {
     ...(options.headers || {})
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers
+    });
+  } catch (error) {
+    throw new Error(`Unable to reach the RealmQuest API at ${API_BASE}. Check VITE_API_URL, server availability, and CORS settings.`);
+  }
 
   const data = await response.json().catch(() => ({}));
 
