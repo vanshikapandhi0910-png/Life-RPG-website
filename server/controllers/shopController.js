@@ -2,7 +2,7 @@ const Storage = require('../config/storageEngine');
 
 exports.getShopCatalog = async (req, res) => {
   try {
-    const items = Storage.getAllItems();
+    const items = await Storage.getAllItems();
     return res.json({ items });
   } catch (error) {
     return res.status(500).json({ message: 'Error loading shop items.' });
@@ -12,8 +12,8 @@ exports.getShopCatalog = async (req, res) => {
 exports.buyItem = async (req, res) => {
   try {
     const { itemId } = req.body;
-    const user = Storage.findUserById(req.userId);
-    const item = Storage.findItemById(itemId);
+    const user = await Storage.findUserById(req.userId);
+    const item = await Storage.findItemById(itemId);
 
     if (!user || !item) {
       return res.status(404).json({ message: 'Item or User not found.' });
@@ -63,13 +63,13 @@ exports.buyItem = async (req, res) => {
       updatedInventory.push({ itemId: item._id, name: item.name, type: item.type, quantity: 1, itemData: item });
     }
 
-    const updatedUser = Storage.updateUser(user._id, {
+    const updatedUser = await Storage.updateUser(user._id, {
       gold: newGold,
       gems: newGems,
       inventory: updatedInventory
     });
 
-    Storage.logActivity(req.userId, 'ITEM_BOUGHT', `Purchased "${item.name}" for ${item.price} ${item.currency || 'Gold'}`);
+    await Storage.logActivity(req.userId, 'ITEM_BOUGHT', `Purchased "${item.name}" for ${item.price} ${item.currency || 'Gold'}`);
 
     const { passwordHash, ...safeUser } = updatedUser;
     return res.json({
@@ -85,8 +85,8 @@ exports.buyItem = async (req, res) => {
 exports.equipItem = async (req, res) => {
   try {
     const { itemId, slot } = req.body; // slot: 'weapon', 'armor', 'accessory', 'pet'
-    const user = Storage.findUserById(req.userId);
-    const item = Storage.findItemById(itemId);
+    const user = await Storage.findUserById(req.userId);
+    const item = await Storage.findItemById(itemId);
 
     if (!user || !item) {
       return res.status(404).json({ message: 'Item or User not found.' });
@@ -110,8 +110,8 @@ exports.equipItem = async (req, res) => {
       [targetSlot]: item._id
     };
 
-    const updatedUser = Storage.updateUser(user._id, { equipped });
-    Storage.logActivity(req.userId, 'ITEM_EQUIPPED', `Equipped ${item.name} into ${targetSlot} slot.`);
+    const updatedUser = await Storage.updateUser(user._id, { equipped });
+    await Storage.logActivity(req.userId, 'ITEM_EQUIPPED', `Equipped ${item.name} into ${targetSlot} slot.`);
 
     const { passwordHash, ...safeUser } = updatedUser;
     return res.json({
@@ -126,13 +126,13 @@ exports.equipItem = async (req, res) => {
 exports.unequipItem = async (req, res) => {
   try {
     const { slot } = req.body;
-    const user = Storage.findUserById(req.userId);
+    const user = await Storage.findUserById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     const equipped = { ...(user.equipped || {}) };
     delete equipped[slot];
 
-    const updatedUser = Storage.updateUser(user._id, { equipped });
+    const updatedUser = await Storage.updateUser(user._id, { equipped });
     const { passwordHash, ...safeUser } = updatedUser;
 
     return res.json({ message: `Unequipped slot: ${slot}`, user: safeUser });
@@ -144,8 +144,8 @@ exports.unequipItem = async (req, res) => {
 exports.usePotion = async (req, res) => {
   try {
     const { itemId } = req.body;
-    const user = Storage.findUserById(req.userId);
-    const item = Storage.findItemById(itemId);
+    const user = await Storage.findUserById(req.userId);
+    const item = await Storage.findItemById(itemId);
 
     if (!user || !item) return res.status(404).json({ message: 'Item not found.' });
 
@@ -178,8 +178,8 @@ exports.usePotion = async (req, res) => {
       msg += ' Streak freeze charge added!';
     }
 
-    const updatedUser = Storage.updateUser(user._id, updates);
-    Storage.logActivity(req.userId, 'POTION_USED', msg);
+    const updatedUser = await Storage.updateUser(user._id, updates);
+    await Storage.logActivity(req.userId, 'POTION_USED', msg);
 
     const { passwordHash, ...safeUser } = updatedUser;
     return res.json({ message: msg, user: safeUser });

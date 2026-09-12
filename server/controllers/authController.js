@@ -21,7 +21,7 @@ exports.register = async (req, res) => {
     }
 
     // Check existing
-    const existingUser = Storage.findUserByEmail(email) || Storage.findUserByUsername(username);
+    const existingUser = await Storage.findUserByEmail(email) || await Storage.findUserByUsername(username);
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email or username already exists.' });
     }
@@ -33,7 +33,7 @@ exports.register = async (req, res) => {
       ? characterClass.toUpperCase()
       : 'WARRIOR';
 
-    const newUser = Storage.createUser({
+    const newUser = await Storage.createUser({
       username: username.trim(),
       email: email.trim().toLowerCase(),
       passwordHash,
@@ -84,9 +84,9 @@ exports.register = async (req, res) => {
       }
     ];
 
-    introQuests.forEach(q => Storage.createQuest(q));
+    await Promise.all(introQuests.map(q => Storage.createQuest(q)));
 
-    Storage.logActivity(newUser._id, 'ACCOUNT_CREATED', `Hero ${newUser.username} of class ${validClass} has entered the realm!`);
+    await Storage.logActivity(newUser._id, 'ACCOUNT_CREATED', `Hero ${newUser.username} of class ${validClass} has entered the realm!`);
 
     const { passwordHash: _, ...safeUser } = newUser;
     return res.status(201).json({
@@ -108,7 +108,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email/Username and password are required.' });
     }
 
-    const user = Storage.findUserByEmail(emailOrUsername) || Storage.findUserByUsername(emailOrUsername);
+    const user = await Storage.findUserByEmail(emailOrUsername) || await Storage.findUserByUsername(emailOrUsername);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. No hero found with that name.' });
     }
@@ -120,7 +120,7 @@ exports.login = async (req, res) => {
 
     // Evaluate streak on login
     const updatedStreak = evaluateStreak(user.lastActiveDate, user.streak || 0);
-    const updatedUser = Storage.updateUser(user._id, {
+    const updatedUser = await Storage.updateUser(user._id, {
       streak: updatedStreak,
       lastActiveDate: new Date().toISOString()
     });
@@ -141,14 +141,14 @@ exports.login = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const user = Storage.findUserById(req.userId);
+    const user = await Storage.findUserById(req.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
     // Ensure streak is up-to-date
     const updatedStreak = evaluateStreak(user.lastActiveDate, user.streak || 0);
-    const updatedUser = Storage.updateUser(user._id, {
+    const updatedUser = await Storage.updateUser(user._id, {
       streak: updatedStreak,
       lastActiveDate: new Date().toISOString()
     });
@@ -172,7 +172,7 @@ exports.updateProfile = async (req, res) => {
     if (title) updates.title = title;
     if (avatar) updates.avatar = avatar;
 
-    const updatedUser = Storage.updateUser(req.userId, updates);
+    const updatedUser = await Storage.updateUser(req.userId, updates);
     const { passwordHash, ...safeUser } = updatedUser;
 
     return res.json({ message: 'Profile updated!', user: safeUser });
@@ -184,7 +184,7 @@ exports.updateProfile = async (req, res) => {
 exports.castSpell = async (req, res) => {
   try {
     const { spellType } = req.body;
-    const user = Storage.findUserById(req.userId);
+    const user = await Storage.findUserById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const SPELLS = {
@@ -218,8 +218,8 @@ exports.castSpell = async (req, res) => {
       resultMsg += ' Streak Shield activated!';
     }
 
-    const updated = Storage.updateUser(req.userId, updates);
-    Storage.logActivity(req.userId, 'SPELL_CAST', resultMsg);
+    const updated = await Storage.updateUser(req.userId, updates);
+    await Storage.logActivity(req.userId, 'SPELL_CAST', resultMsg);
 
     const { passwordHash, ...safeUser } = updated;
     return res.json({ message: resultMsg, user: safeUser });

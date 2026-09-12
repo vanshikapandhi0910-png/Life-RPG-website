@@ -3,7 +3,7 @@ const { computeQuestRewards, applyLevelUp, evaluateStreak } = require('../utils/
 
 exports.getQuests = async (req, res) => {
   try {
-    const quests = Storage.getQuestsByUser(req.userId);
+    const quests = await Storage.getQuestsByUser(req.userId);
     return res.json({ quests });
   } catch (error) {
     return res.status(500).json({ message: 'Error retrieving quests.' });
@@ -18,7 +18,7 @@ exports.createQuest = async (req, res) => {
       return res.status(400).json({ message: 'Quest title is required.' });
     }
 
-    const quest = Storage.createQuest({
+    const quest = await Storage.createQuest({
       userId: req.userId,
       title: title.trim(),
       notes: notes || '',
@@ -37,7 +37,7 @@ exports.createQuest = async (req, res) => {
       tags: Array.isArray(tags) ? tags : []
     });
 
-    Storage.logActivity(req.userId, 'QUEST_CREATED', `New Quest charted: "${quest.title}" [${quest.difficulty} ${quest.attribute}]`);
+    await Storage.logActivity(req.userId, 'QUEST_CREATED', `New Quest charted: "${quest.title}" [${quest.difficulty} ${quest.attribute}]`);
 
     return res.status(201).json({ message: 'Quest created!', quest });
   } catch (error) {
@@ -51,7 +51,7 @@ exports.updateQuest = async (req, res) => {
     const { id } = req.params;
     const { title, notes, type, difficulty, attribute, priority, dueDate, subtasks, tags } = req.body;
 
-    const existing = Storage.findQuestById(id, req.userId);
+    const existing = await Storage.findQuestById(id, req.userId);
     if (!existing) {
       return res.status(404).json({ message: 'Quest not found.' });
     }
@@ -67,7 +67,7 @@ exports.updateQuest = async (req, res) => {
     if (subtasks !== undefined) updates.subtasks = subtasks;
     if (tags !== undefined) updates.tags = tags;
 
-    const updatedQuest = Storage.updateQuest(id, req.userId, updates);
+    const updatedQuest = await Storage.updateQuest(id, req.userId, updates);
     return res.json({ message: 'Quest updated!', quest: updatedQuest });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to update quest.' });
@@ -77,7 +77,7 @@ exports.updateQuest = async (req, res) => {
 exports.deleteQuest = async (req, res) => {
   try {
     const { id } = req.params;
-    const success = Storage.deleteQuest(id, req.userId);
+    const success = await Storage.deleteQuest(id, req.userId);
     if (!success) {
       return res.status(404).json({ message: 'Quest not found or already deleted.' });
     }
@@ -90,7 +90,7 @@ exports.deleteQuest = async (req, res) => {
 exports.completeQuest = async (req, res) => {
   try {
     const { id } = req.params;
-    const quest = Storage.findQuestById(id, req.userId);
+    const quest = await Storage.findQuestById(id, req.userId);
     if (!quest) {
       return res.status(404).json({ message: 'Quest not found.' });
     }
@@ -99,8 +99,8 @@ exports.completeQuest = async (req, res) => {
       return res.status(400).json({ message: 'Quest is already completed.' });
     }
 
-    const user = Storage.findUserById(req.userId);
-    const allItems = Storage.getAllItems();
+    const user = await Storage.findUserById(req.userId);
+    const allItems = await Storage.getAllItems();
     
     // Evaluate rewards
     let rewards = computeQuestRewards(user, quest, allItems);
@@ -135,7 +135,7 @@ exports.completeQuest = async (req, res) => {
     const newHp = Math.min(levelUpData.maxHp, (user.hp || 100));
 
     // Update User
-    const updatedUser = Storage.updateUser(user._id, {
+    const updatedUser = await Storage.updateUser(user._id, {
       level: levelUpData.level,
       xp: levelUpData.xp,
       maxXp: levelUpData.maxXp,
@@ -156,12 +156,12 @@ exports.completeQuest = async (req, res) => {
     // Mark Quest Completed
     let updatedQuest;
     if (quest.type === 'habit') {
-      updatedQuest = Storage.updateQuest(id, req.userId, {
+      updatedQuest = await Storage.updateQuest(id, req.userId, {
         habitCounter: (quest.habitCounter || 0) + 1,
         completedAt: new Date().toISOString()
       });
     } else {
-      updatedQuest = Storage.updateQuest(id, req.userId, {
+      updatedQuest = await Storage.updateQuest(id, req.userId, {
         completed: true,
         completedAt: new Date().toISOString(),
         streak: (quest.streak || 0) + 1
@@ -170,7 +170,7 @@ exports.completeQuest = async (req, res) => {
 
     // Deal damage to Active World Boss
     let bossDamageReport = null;
-    const activeBoss = Storage.getActiveBoss();
+    const activeBoss = await Storage.getActiveBoss();
     if (activeBoss && activeBoss.currentHp > 0) {
       let damageDealt = rewards.bossDamage;
       if (activeBoss.weakness === quest.attribute) {
@@ -179,7 +179,7 @@ exports.completeQuest = async (req, res) => {
       const newBossHp = Math.max(0, activeBoss.currentHp - damageDealt);
       const isDefeated = newBossHp === 0;
 
-      Storage.updateBoss(activeBoss._id, {
+      await Storage.updateBoss(activeBoss._id, {
         currentHp: newBossHp,
         active: !isDefeated
       });
@@ -195,15 +195,15 @@ exports.completeQuest = async (req, res) => {
 
       if (isDefeated) {
         // Grant bonus boss defeat loot to user
-        Storage.updateUser(user._id, {
+        await Storage.updateUser(user._id, {
           gold: (updatedUser.gold || 0) + activeBoss.rewardGold,
           gems: (updatedUser.gems || 0) + activeBoss.rewardGems
         });
-        Storage.logActivity(user._id, 'BOSS_DEFEATED', `Vanquished Boss: ${activeBoss.name}! Earned +${activeBoss.rewardGold} Gold & +${activeBoss.rewardGems} Gems!`);
+        await Storage.logActivity(user._id, 'BOSS_DEFEATED', `Vanquished Boss: ${activeBoss.name}! Earned +${activeBoss.rewardGold} Gold & +${activeBoss.rewardGems} Gems!`);
       }
     }
 
-    Storage.logActivity(
+    await Storage.logActivity(
       req.userId,
       'QUEST_COMPLETED',
       `Completed "${quest.title}" (+${rewards.xpGained} XP, +${rewards.goldGained} Gold, +${rewards.statGain} ${rewards.attribute})`
@@ -232,10 +232,10 @@ exports.completeQuest = async (req, res) => {
 exports.revertQuest = async (req, res) => {
   try {
     const { id } = req.params;
-    const quest = Storage.findQuestById(id, req.userId);
+    const quest = await Storage.findQuestById(id, req.userId);
     if (!quest) return res.status(404).json({ message: 'Quest not found.' });
 
-    const updatedQuest = Storage.updateQuest(id, req.userId, {
+    const updatedQuest = await Storage.updateQuest(id, req.userId, {
       completed: false,
       completedAt: null
     });
@@ -251,7 +251,7 @@ exports.habitAction = async (req, res) => {
     const { id } = req.params;
     const { direction } = req.body; // 'positive' or 'negative'
 
-    const quest = Storage.findQuestById(id, req.userId);
+    const quest = await Storage.findQuestById(id, req.userId);
     if (!quest || quest.type !== 'habit') {
       return res.status(400).json({ message: 'Habit not found.' });
     }
@@ -260,16 +260,16 @@ exports.habitAction = async (req, res) => {
       return exports.completeQuest(req, res);
     } else {
       // Negative habit penalty
-      const user = Storage.findUserById(req.userId);
+      const user = await Storage.findUserById(req.userId);
       const damagePenalty = 10;
       const newHp = Math.max(1, (user.hp || 100) - damagePenalty);
       
-      const updatedUser = Storage.updateUser(user._id, { hp: newHp });
-      const updatedQuest = Storage.updateQuest(id, req.userId, {
+      const updatedUser = await Storage.updateUser(user._id, { hp: newHp });
+      const updatedQuest = await Storage.updateQuest(id, req.userId, {
         habitCounter: (quest.habitCounter || 0) - 1
       });
 
-      Storage.logActivity(req.userId, 'HABIT_PENALTY', `Negative impulse recorded for "${quest.title}" (-${damagePenalty} HP)`);
+      await Storage.logActivity(req.userId, 'HABIT_PENALTY', `Negative impulse recorded for "${quest.title}" (-${damagePenalty} HP)`);
 
       const { passwordHash, ...safeUser } = updatedUser;
       return res.json({

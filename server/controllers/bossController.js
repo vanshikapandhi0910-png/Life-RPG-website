@@ -2,12 +2,12 @@ const Storage = require('../config/storageEngine');
 
 exports.getActiveBoss = async (req, res) => {
   try {
-    let boss = Storage.getActiveBoss();
+    let boss = await Storage.getActiveBoss();
     if (!boss) {
       // Re-activate first boss if defeated
-      const bosses = Storage.readDB ? Storage.readDB().bosses : [];
+      const bosses = await Storage.getAllBosses();
       if (bosses.length > 0) {
-        boss = Storage.updateBoss(bosses[0]._id, { active: true, currentHp: bosses[0].totalHp });
+        boss = await Storage.updateBoss(bosses[0]._id, { active: true, currentHp: bosses[0].totalHp });
       }
     }
     return res.json({ boss });
@@ -18,8 +18,8 @@ exports.getActiveBoss = async (req, res) => {
 
 exports.getBossLeaderboard = async (req, res) => {
   try {
-    const db = Storage.readDB ? Storage.readDB() : { users: [] };
-    const leaderboard = (db.users || [])
+    const users = await Storage.getUsers();
+    const leaderboard = users
       .map(u => ({
         username: u.username,
         level: u.level,

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DB_FILE = path.join(DATA_DIR, 'realmquest_db.json');
@@ -41,26 +42,50 @@ function writeDB(data) {
   }
 }
 
+function useMongo() {
+  return mongoose.connection.readyState === 1;
+}
+
+function collection(name) {
+  return mongoose.connection.db.collection(name);
+}
+
+function normalize(document) {
+  if (!document) return null;
+  const { _id, ...rest } = document;
+  return { _id: String(_id), ...rest };
+}
+
 const Storage = {
   generateId: () => crypto.randomBytes(12).toString('hex'),
 
+  readDB: () => readDB(),
+
   // USERS
-  findUserById: (id) => {
+  findUserById: async (id) => {
+    if (useMongo()) return normalize(await collection('users').findOne({ _id: id }));
     const db = readDB();
     return db.users.find(u => u._id === id || u.id === id) || null;
   },
 
-  findUserByEmail: (email) => {
+  findUserByEmail: async (email) => {
+    if (useMongo()) return normalize(await collection('users').findOne({ email: email?.toLowerCase() }));
     const db = readDB();
     return db.users.find(u => u.email?.toLowerCase() === email?.toLowerCase()) || null;
   },
 
-  findUserByUsername: (username) => {
+  findUserByUsername: async (username) => {
+    if (useMongo()) return normalize(await collection('users').findOne({ username: username?.toLowerCase() }));
     const db = readDB();
     return db.users.find(u => u.username?.toLowerCase() === username?.toLowerCase()) || null;
   },
 
-  createUser: (userData) => {
+  getUsers: async () => {
+    if (useMongo()) return (await collection('users').find({}).toArray()).map(normalize);
+    return readDB().users;
+  },
+
+  createUser: async (userData) => {
     const db = readDB();
     const newUser = {
       _id: Storage.generateId(),
@@ -101,12 +126,24 @@ const Storage = {
       statsHistory: [],
       ...userData
     };
+    if (useMongo()) {
+      await collection('users').insertOne({ ...newUser, _id: newUser._id });
+      return newUser;
+    }
     db.users.push(newUser);
     writeDB(db);
     return newUser;
   },
 
-  updateUser: (id, updates) => {
+  updateUser: async (id, updates) => {
+    if (useMongo()) {
+      const updated = await collection('users').findOneAndUpdate(
+        { _id: id },
+        { $set: { ...updates, updatedAt: new Date().toISOString() } },
+        { returnDocument: 'after' }
+      );
+      return normalize(updated);
+    }
     const db = readDB();
     const index = db.users.findIndex(u => u._id === id || u.id === id);
     if (index === -1) return null;
@@ -120,17 +157,19 @@ const Storage = {
   },
 
   // QUESTS
-  getQuestsByUser: (userId) => {
+  getQuestsByUser: async (userId) => {
+    if (useMongo()) return (await collection('quests').find({ userId }).toArray()).map(normalize);
     const db = readDB();
     return db.quests.filter(q => q.userId === userId);
   },
 
-  findQuestById: (questId, userId) => {
+  findQuestById: async (questId, userId) => {
+    if (useMongo()) return normalize(await collection('quests').findOne({ _id: questId, userId }));
     const db = readDB();
     return db.quests.find(q => (q._id === questId || q.id === questId) && q.userId === userId) || null;
   },
 
-  createQuest: (questData) => {
+  createQuest: async (questData) => {
     const db = readDB();
     const newQuest = {
       _id: Storage.generateId(),
@@ -148,12 +187,24 @@ const Storage = {
       type: 'daily', // 'daily', 'todo', 'habit', 'epic'
       ...questData
     };
+    if (useMongo()) {
+      await collection('quests').insertOne(newQuest);
+      return newQuest;
+    }
     db.quests.push(newQuest);
     writeDB(db);
     return newQuest;
   },
 
-  updateQuest: (questId, userId, updates) => {
+  updateQuest: async (questId, userId, updates) => {
+    if (useMongo()) {
+      const updated = await collection('quests').findOneAndUpdate(
+        { _id: questId, userId },
+        { $set: { ...updates, updatedAt: new Date().toISOString() } },
+        { returnDocument: 'after' }
+      );
+      return normalize(updated);
+    }
     const db = readDB();
     const index = db.quests.findIndex(q => (q._id === questId || q.id === questId) && q.userId === userId);
     if (index === -1) return null;
@@ -166,7 +217,11 @@ const Storage = {
     return db.quests[index];
   },
 
-  deleteQuest: (questId, userId) => {
+  deleteQuest: async (questId, userId) => {
+    if (useMongo()) {
+      const result = await collection('quests').deleteOne({ _id: questId, userId });
+      return result.deletedCount > 0;
+    }
     const db = readDB();
     const initialLen = db.quests.length;
     db.quests = db.quests.filter(q => !((q._id === questId || q.id === questId) && q.userId === userId));
@@ -175,17 +230,23 @@ const Storage = {
   },
 
   // ITEMS
-  getAllItems: () => {
+  getAllItems: async () => {
+    if (useMongo()) return (await collection('items').find({}).toArray()).map(normalize);
     const db = readDB();
     return db.items;
   },
 
-  findItemById: (itemId) => {
+  findItemById: async (itemId) => {
+    if (useMongo()) return normalize(await collection('items').findOne({ _id: itemId }));
     const db = readDB();
     return db.items.find(i => i._id === itemId || i.id === itemId) || null;
   },
 
-  seedItems: (defaultItems) => {
+  seedItems: async (defaultItems) => {
+    if (useMongo() && await collection('items').countDocuments() === 0) {
+      await collection('items').insertMany(defaultItems.map(item => ({ _id: item._id || Storage.generateId(), ...item })));
+      return;
+    }
     const db = readDB();
     if (!db.items || db.items.length === 0) {
       db.items = defaultItems.map(item => ({
@@ -197,12 +258,26 @@ const Storage = {
   },
 
   // BOSSES
-  getActiveBoss: () => {
+  getActiveBoss: async () => {
+    if (useMongo()) return normalize(await collection('bosses').findOne({ active: true }));
     const db = readDB();
     return db.bosses.find(b => b.active) || null;
   },
 
-  updateBoss: (bossId, updates) => {
+  getAllBosses: async () => {
+    if (useMongo()) return (await collection('bosses').find({}).toArray()).map(normalize);
+    return readDB().bosses;
+  },
+
+  updateBoss: async (bossId, updates) => {
+    if (useMongo()) {
+      const updated = await collection('bosses').findOneAndUpdate(
+        { _id: bossId },
+        { $set: updates },
+        { returnDocument: 'after' }
+      );
+      return normalize(updated);
+    }
     const db = readDB();
     const index = db.bosses.findIndex(b => b._id === bossId || b.id === bossId);
     if (index === -1) return null;
@@ -214,7 +289,11 @@ const Storage = {
     return db.bosses[index];
   },
 
-  seedBosses: (defaultBosses) => {
+  seedBosses: async (defaultBosses) => {
+    if (useMongo() && await collection('bosses').countDocuments() === 0) {
+      await collection('bosses').insertMany(defaultBosses.map(boss => ({ _id: boss._id || Storage.generateId(), ...boss })));
+      return;
+    }
     const db = readDB();
     if (!db.bosses || db.bosses.length === 0) {
       db.bosses = defaultBosses.map(boss => ({
@@ -226,7 +305,7 @@ const Storage = {
   },
 
   // ACTIVITY LOGS
-  logActivity: (userId, action, details) => {
+  logActivity: async (userId, action, details) => {
     const db = readDB();
     const log = {
       _id: Storage.generateId(),
@@ -235,6 +314,10 @@ const Storage = {
       details,
       timestamp: new Date().toISOString()
     };
+    if (useMongo()) {
+      await collection('activityLogs').insertOne(log);
+      return log;
+    }
     db.activityLogs.push(log);
     // Keep last 1000 logs
     if (db.activityLogs.length > 1000) {
@@ -244,7 +327,8 @@ const Storage = {
     return log;
   },
 
-  getUserLogs: (userId, limit = 20) => {
+  getUserLogs: async (userId, limit = 20) => {
+    if (useMongo()) return (await collection('activityLogs').find({ userId }).sort({ timestamp: -1 }).limit(limit).toArray()).map(normalize);
     const db = readDB();
     return db.activityLogs
       .filter(l => l.userId === userId)

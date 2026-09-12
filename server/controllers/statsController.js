@@ -3,12 +3,12 @@ const { getEquippedBonuses } = require('../utils/rpgEngine');
 
 exports.getPlayerOverview = async (req, res) => {
   try {
-    const user = Storage.findUserById(req.userId);
+    const user = await Storage.findUserById(req.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const quests = Storage.getQuestsByUser(req.userId);
-    const logs = Storage.getUserLogs(req.userId, 15);
-    const allItems = Storage.getAllItems();
+    const quests = await Storage.getQuestsByUser(req.userId);
+    const logs = await Storage.getUserLogs(req.userId, 15);
+    const allItems = await Storage.getAllItems();
     const equipBonus = getEquippedBonuses(user, allItems);
 
     const totalQuests = quests.length;

@@ -19,6 +19,7 @@ module.exports = async (req, res) => {
 
   try {
     await ensureDatabase();
+    await app.initializeAssets();
   } catch (error) {
     console.error('[Database] Vercel database initialization failed:', error.message);
     return res.status(503).json({

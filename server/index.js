@@ -44,13 +44,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Seed Initial RPG Assets
-Storage.seedItems(DEFAULT_ITEMS);
-Storage.seedBosses(DEFAULT_BOSSES);
+async function initializeAssets() {
+  await Storage.seedItems(DEFAULT_ITEMS);
+  await Storage.seedBosses(DEFAULT_BOSSES);
+}
 
 // Boot server
 async function startServer() {
   await connectDB();
+  await initializeAssets();
   app.listen(PORT, () => {
     console.log(`⚔️  RealmQuest Life RPG API Server running on port ${PORT}`);
     console.log(`🏰  API Base URL: http://localhost:${PORT}/api`);
@@ -62,3 +64,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.initializeAssets = initializeAssets;
