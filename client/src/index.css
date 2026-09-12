@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --rpg-bg: #090d16;
+    --rpg-card: rgba(15, 23, 42, 0.75);
+    --rpg-border: rgba(139, 92, 246, 0.25);
+    --rpg-primary: #8b5cf6;
+    --rpg-accent: #06b6d4;
+  }
+
+  .theme-cyberpunk {
+    --rpg-bg: #070913;
+    --rpg-card: rgba(13, 17, 33, 0.85);
+    --rpg-border: rgba(6, 182, 212, 0.3);
+    --rpg-primary: #a855f7;
+    --rpg-accent: #06b6d4;
+  }
+
+  .theme-retro-dungeon {
+    --rpg-bg: #0f0d0a;
+    --rpg-card: rgba(26, 20, 15, 0.9);
+    --rpg-border: rgba(245, 158, 11, 0.35);
+    --rpg-primary: #f59e0b;
+    --rpg-accent: #eab308;
+  }
+
+  .theme-dark-fantasy {
+    --rpg-bg: #0b0709;
+    --rpg-card: rgba(24, 11, 16, 0.85);
+    --rpg-border: rgba(239, 68, 68, 0.35);
+    --rpg-primary: #ef4444;
+    --rpg-accent: #f43f5e;
+  }
+
+  .theme-celestial {
+    --rpg-bg: #060b19;
+    --rpg-card: rgba(11, 24, 52, 0.85);
+    --rpg-border: rgba(56, 189, 248, 0.35);
+    --rpg-primary: #38bdf8;
+    --rpg-accent: #818cf8;
+  }
+
+  .theme-cozy-tavern {
+    --rpg-bg: #140e0b;
+    --rpg-card: rgba(36, 23, 17, 0.88);
+    --rpg-border: rgba(217, 119, 6, 0.3);
+    --rpg-primary: #d97706;
+    --rpg-accent: #fbbf24;
+  }
+
+  body {
+    background-color: var(--rpg-bg);
+    color: #f8fafc;
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* Custom Glassmorphism & RPG HUD styles */
+.rpg-glass {
+  background: var(--rpg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--rpg-border);
+}
+
+.rpg-glass-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rpg-glass-hover:hover {
+  border-color: var(--rpg-primary);
+  box-shadow: 0 0 20px -5px var(--rpg-primary);
+  transform: translateY(-2px);
+}
+
+.glow-border {
+  border: 1px solid var(--rpg-primary);
+  box-shadow: 0 0 15px -3px var(--rpg-primary);
+}
+
+.stat-bar-fill {
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--rpg-primary);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rpg-accent);
+}
+
+/* Animated Shimmer for Epic Loot */
+.shimmer-badge {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shine 2.5s infinite;
+}
