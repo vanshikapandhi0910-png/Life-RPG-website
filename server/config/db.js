@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
+let connectionPromise;
+
 const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) return true;
+  if (connectionPromise) return connectionPromise;
+
   const isVercel = process.env.VERCEL === '1';
   const uri = process.env.MONGODB_URI || (isVercel ? null : 'mongodb://127.0.0.1:27017/realmquest');
 
@@ -8,13 +13,13 @@ const connectDB = async () => {
     throw new Error('MONGODB_URI is required when running on Vercel. Configure a persistent MongoDB Atlas database.');
   }
 
-  try {
-    const conn = await mongoose.connect(uri, {
+  connectionPromise = mongoose.connect(uri, {
       serverSelectionTimeoutMS: 2000,
-    });
-    console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
-    return true;
-  } catch (error) {
+    }).then(conn => {
+      console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
+      return true;
+    }).catch(async error => {
+      connectionPromise = null;
     if (isVercel) {
       throw new Error(`Unable to connect to MongoDB on Vercel: ${error.message}`);
     }
@@ -32,7 +37,9 @@ const connectDB = async () => {
       // We will also provide a robust local JSON fallback store if native mongod isn't installed
       return false;
     }
-  }
+    });
+
+  return connectionPromise;
 };
 
 module.exports = connectDB;

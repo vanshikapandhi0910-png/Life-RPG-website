@@ -12,8 +12,8 @@ export default function Navbar({ onOpenShop, onOpenInventory, onOpenStats, onOpe
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full rpg-glass border-b border-purple-500/20 px-4 lg:px-8 py-3 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full rpg-glass border-b border-purple-500/20 px-3 sm:px-4 lg:px-8 py-3 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         
         {/* LOGO & TITLE */}
         <div className="flex items-center gap-3">
@@ -36,7 +36,7 @@ export default function Navbar({ onOpenShop, onOpenInventory, onOpenStats, onOpe
         </div>
 
         {/* STAT CURRENCIES & QUICK STATS */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="order-3 sm:order-2 w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-4">
           
           {/* Streak Flame */}
           <div 
@@ -78,7 +78,7 @@ export default function Navbar({ onOpenShop, onOpenInventory, onOpenStats, onOpe
         </div>
 
         {/* THEME & SETTINGS & PROFILE */}
-        <div className="flex items-center gap-2">
+        <div className="order-2 sm:order-3 ml-auto flex items-center gap-1.5 sm:gap-2">
           
           {/* Audio Toggle */}
           <AudioToggle />
