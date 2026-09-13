@@ -102,7 +102,7 @@ export default function AuthPage() {
         });
         playLevelUp();
       } else {
-        await login(email.trim() || username.trim(), password);
+        await login(username.trim() || email.trim(), password);
         playClick();
       }
     } catch (err) {
@@ -208,7 +208,7 @@ export default function AuthPage() {
               <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                required
+                required={isRegister || !email}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="e.g. Shadowblade_99"
@@ -226,7 +226,7 @@ export default function AuthPage() {
               <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
-                required
+                required={isRegister || !username}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="hero@realmquest.app"
