@@ -22,8 +22,11 @@ module.exports = async (req, res) => {
     await app.initializeAssets();
   } catch (error) {
     console.error('[Database] Vercel database initialization failed:', error.message);
+    const missingDatabaseUrl = error.message.includes('MONGODB_URI is required');
     return res.status(503).json({
-      message: 'The API database is not configured. Set MONGODB_URI in the Vercel project environment variables.'
+      message: missingDatabaseUrl
+        ? 'The API database is not configured. Set MONGODB_URI in the Vercel Production environment variables, then redeploy.'
+        : 'The API could not connect to MongoDB. Check MONGODB_URI, Atlas Network Access, and database credentials.'
     });
   }
 
